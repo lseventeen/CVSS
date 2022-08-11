@@ -1,1 +1,1 @@
-from .build import build_loader,DataLoaderX
+from .build import build_train_loader, build_test_loader, DataLoaderX

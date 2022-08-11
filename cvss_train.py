@@ -1,6 +1,6 @@
 import argparse
 from loguru import logger
-from data import build_loader
+from data import build_train_loader
 from trainer import Trainer
 from utils.helpers import seed_torch
 from losses import *
@@ -30,6 +30,7 @@ def parse_option():
     )
     parser.add_argument("--tag", help='tag of experiment')
     parser.add_argument("-wm", "--wandb_mode", default="offline")
+    parser.add_argument("-mt", "--model_type")
     parser.add_argument('-bs', '--batch-size', type=int,
                         help="batch size for single GPU")
     parser.add_argument('-dd', '--disable_distributed', help="training without DDP",
@@ -69,8 +70,8 @@ def main_worker(local_rank, config):
     seed_torch(seed)
     cudnn.benchmark = True
 
-    train_loader, val_loader = build_loader(config)
-    model = build_model(config).cuda()
+    train_loader, val_loader = build_train_loader(config)
+    model,is_2d = build_model(config)
     # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda()
     if config.DIS:
         model = torch.nn.parallel.DistributedDataParallel(
@@ -82,7 +83,8 @@ def main_worker(local_rank, config):
     trainer = Trainer(config=config,
                       train_loader=train_loader,
                       val_loader=val_loader,
-                      model=model,
+                      model=model.cuda(),
+                      is_2d=is_2d,
                       loss=loss,
                       optimizer=optimizer,
                       lr_scheduler=lr_scheduler)

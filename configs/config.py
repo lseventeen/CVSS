@@ -20,8 +20,7 @@ _C.SEED = 1234
 _C.AMP = True
 _C.EXPERIMENT_ID = ""
 _C.SAVE_DIR = "save_pth"
-_C.TEST_OUTPUT_PATH = "save_results"
-_C.MODEL_PATH = "/home/lwt/code/flare/flare2022/save_pth/coarse/conv_64_LRelu_220711_013259"
+_C.MODEL_PATH = "/home/lwt/code/CVSS/save_pth/S16_UNet_220807_212203"
 
 _C.WANDB = CN()
 _C.WANDB.PROJECT = "CVSS"
@@ -35,10 +34,11 @@ _C.DATASET.TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/training/images"
 _C.DATASET.TRAIN_LABEL_PATH = "/home/lwt/data/CVSS/training/labels"
 _C.DATASET.TEST_IMAGE_PATH = "/home/lwt/data/CVSS/test/images"
 _C.DATASET.TEST_LABEL_PATH = "/home/lwt/data/CVSS/test/labels"
-_C.DATASET.PROPRECESS_PATH = "/home/lwt/data_pro/CVSS_train_patch"
+_C.DATASET.TRAIN_PROPRECESS_PATH = "/home/lwt/data_pro/CVSS/train_patch"
+_C.DATASET.TEST_PROPRECESS_PATH = "/home/lwt/data_pro/CVSS/test"
 
 
-_C.DATASET.STRIDE = 8
+_C.DATASET.STRIDE = 32
 _C.DATASET.PATCH_SIZE = 64
 _C.DATASET.WITH_VAL = True
 _C.DATASET.VAL_SPLIT = 0.2
@@ -56,10 +56,10 @@ _C.MODEL.TYPE = "FR_UNet"
 
 _C.TRAIN = CN()
 _C.TRAIN.DO_BACKPROP = True
-_C.TRAIN.VAL_NUM_EPOCHS = 1
-_C.TRAIN.SAVE_PERIOD = 1
+_C.TRAIN.VAL_NUM_EPOCHS = 5
+_C.TRAIN.SAVE_PERIOD = 5
 
-_C.TRAIN.EPOCHS = 50
+_C.TRAIN.EPOCHS = 100
 _C.TRAIN.WEIGHT_DECAY = 0.01
 _C.TRAIN.WARMUP_EPOCHS = 10
 _C.TRAIN.BASE_LR = 5e-4
@@ -115,10 +115,14 @@ def update_config(config, args):
     # merge from specific arguments
     if args.batch_size:
         config.DATALOADER.BATCH_SIZE = args.batch_size
+    if args.model_type:
+        config.MODEL.TYPE = args.model_type
     if args.tag:
-        config.WANDB.TAG = args.tag + "_" + config.MODEL.TYPE
+        config.WANDB.TAG = config.MODEL.TYPE + "_" + args.tag  
     else:
         config.WANDB.TAG = config.MODEL.TYPE
+   
+
 
     if args.wandb_mode == "online":
         config.WANDB.MODE = args.wandb_mode
@@ -137,13 +141,8 @@ def update_val_config(config, args):
         config.merge_from_list(args.opts)
 
     # merge from specific arguments
-    if args.save_model_path:
-        config.SAVE_MODEL_PATH = args.save_model_path
-    if args.data_path:
-        config.DATASET.VAL_IMAGE_PATH = args.data_path
-    if args.output_path:
-        config.VAL_OUTPUT_PATH = args.output_path
-   
+    if args.model_path:
+        config.MODEL_PATH = args.model_path   
     config.freeze()
 
 

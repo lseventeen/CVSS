@@ -1,6 +1,6 @@
-
 import torch
 import torch.nn as nn
+from models.utils import InitWeights
 
 
 class unetConv2(nn.Module):
@@ -26,11 +26,8 @@ class unetConv2(nn.Module):
                                      nn.ReLU(inplace=True),)
                 setattr(self, 'conv%d'%i, conv)
                 in_size = out_size
-
-        # initialise the blocks
-        # for m in self.children():
-        #     init_weights(m, init_type='kaiming')
-
+        
+            
     def forward(self, inputs):
         x = inputs
         for i in range(1, self.n+1):
@@ -50,19 +47,18 @@ class unetUp(nn.Module):
                  nn.UpsamplingBilinear2d(scale_factor=2),
                  nn.Conv2d(in_size, out_size, 1))
            
-        # initialise the blocks
-        # for m in self.children():
-        #     if m.__class__.__name__.find('unetConv2') != -1: continue
-        #     init_weights(m, init_type='kaiming')
+        
 
     def forward(self, high_feature, *low_feature):
         outputs0 = self.up(high_feature)
         for feature in low_feature:
             outputs0 = torch.cat([outputs0, feature], 1)
         return self.conv(outputs0)
+
+
 class UNet_Nested(nn.Module):
 
-    def __init__(self, num_channels=1, num_classes=1, feature_scale=2, is_deconv=True, is_batchnorm=True, is_ds=True):
+    def __init__(self, num_channels=1, num_classes=2, feature_scale=2, is_deconv=True, is_batchnorm=True, is_ds=True):
         super(UNet_Nested, self).__init__()
         self.in_channels = num_channels
         self.feature_scale = feature_scale
@@ -102,12 +98,7 @@ class UNet_Nested(nn.Module):
         self.final_3 = nn.Conv2d(filters[0], num_classes, 1)
         self.final_4 = nn.Conv2d(filters[0], num_classes, 1)
 
-        # initialise weights
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         init_weights(m, init_type='kaiming')
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         init_weights(m, init_type='kaiming')
+        self.apply(InitWeights)
 
     def forward(self, inputs):
         # column : 0
@@ -147,11 +138,7 @@ class UNet_Nested(nn.Module):
             return final
         else:
             return final_4
-def count_param(model):
-    param_count = 0
-    for param in model.parameters():
-        param_count += param.view(-1).size()[0]
-    return param_count
+
 if __name__ == '__main__':
     print('#### Test Case ###')
     from torch.autograd import Variable

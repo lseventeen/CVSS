@@ -26,55 +26,34 @@ def initialize_weights(*models):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-
 class ResEncoder(nn.Module):
-    def __init__(self, in_channels, out_channels,dp=0):
+    def __init__(self, in_channels, out_channels):
         super(ResEncoder, self).__init__()
-        
-        self.conv = nn.Sequential(
-
-          
-
-            nn.Conv2d(in_channels, out_channels, kernel_size=3,
-                      padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.Dropout2d(dp),
-            nn.ReLU(inplace=False),
-
-            nn.Conv2d(out_channels, out_channels, kernel_size=3,
-                      padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.Dropout2d(dp),
-
-        )
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=False)
-
-        # self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        # self.bn1 = nn.BatchNorm2d(out_channels)
-        # self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
-        # self.bn2 = nn.BatchNorm2d(out_channels)
-        # self.relu = nn.ReLU(inplace=False)
         self.conv1x1 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
     def forward(self, x):
         residual = self.conv1x1(x)
-        out = self.conv(x)
-        out += residual
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn2(self.conv2(out)))
+        out = out + residual
         out = self.relu(out)
         return out
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, out_channels,dp = 0.2):
+    def __init__(self, in_channels, out_channels):
         super(Decoder, self).__init__()
         self.conv = nn.Sequential(
                 nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
                 nn.BatchNorm2d(out_channels),
-                nn.Dropout2d(dp),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
                 nn.BatchNorm2d(out_channels),
-                nn.Dropout2d(dp),
                 nn.ReLU(inplace=True)
         )
 
@@ -165,7 +144,7 @@ class AffinityAttention(nn.Module):
 
 
 class CSNet(nn.Module):
-    def __init__(self, num_classes=1, num_channels=1):
+    def __init__(self, num_classes, num_channels):
         """
         :param classes: the object classes number.
         :param channels: the channels of the input image.
@@ -229,5 +208,5 @@ class CSNet(nn.Module):
         dec1 = self.decoder1(up1)
 
         final = self.final(dec1)
-        # final = torch.sigmoid(final)
+        # final = F.sigmoid(final)
         return final
