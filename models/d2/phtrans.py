@@ -4,8 +4,8 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
-from timm.models.layers import DropPath, trunc_normal_
-from .swin_3D import *
+# from timm.models.layers import DropPath, trunc_normal_
+from ..d3.swin_3D import *
 
 class PHTrans(nn.Module):
     def __init__(self, num_classes = 1, 
@@ -28,8 +28,8 @@ class PHTrans(nn.Module):
                  qk_scale=None,
                  drop_rate=0., 
                  attn_drop_rate=0., 
-                 dropout_p=0.3,
-                 drop_path_rate=0.3,
+                 dropout_p=0.2,
+                 drop_path_rate=0.2,
                  norm_layer=nn.LayerNorm, 
                  **kwargs):
         super().__init__()

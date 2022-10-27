@@ -123,7 +123,7 @@ class final_conv(nn.Module):
 
 
 class D3_FR_UNet(nn.Module):
-    def __init__(self,  num_classes=1, num_channels=1, feature_scale=2,  dropout=0.2, fuse=True, out_ave=True):
+    def __init__(self,  num_classes=1, num_channels=1, feature_scale=2,  dropout=0.1, fuse=True, out_ave=True):
         super(D3_FR_UNet, self).__init__()
         self.out_ave = out_ave
         filters = [64, 128, 256, 512, 1024]

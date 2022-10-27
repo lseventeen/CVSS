@@ -3,7 +3,9 @@ from .d2.unet import UNet
 from .d2.fr_unet import FR_UNet
 from .d2.attention_net import  AttU_Net
 from .d2.csnet import CSNet
+from .d2.maa_net import MAA_Net
 from .d2.unet_nested import UNet_Nested
 from .d3.d3_unet import D3_UNet
 from .d3.d3_fr_unet import D3_FR_UNet
-from .d3.phtrans import PHTrans
+from .d2.phtrans import PHTrans
+from .d2.res_unet import Res_UNet

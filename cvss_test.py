@@ -28,7 +28,7 @@ def parse_option():
 
 
 def main(config):
-
+    save_dir = config.MODEL_PATH.split('/')[-1]
     np.set_printoptions(formatter={'float': '{: 0.4f}'.format}, suppress=True)
     test_loader = build_test_loader(config)
 
@@ -39,12 +39,11 @@ def main(config):
     model.load_state_dict({k.replace('module.', ''): v for k,
                           v in model_checkpoint['state_dict'].items()})
     logger.info(f'\n{model}\n')
-    loss = CE_DiceLoss()
     tester = Tester(config=config,
                     test_loader=test_loader,
                     model=model.eval().cuda(),
+                    save_dir = save_dir,
                     is_2d = is_2d,
-                    loss=loss,
                     model_name=model_name)
     tester.test()
 

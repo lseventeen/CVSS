@@ -41,6 +41,7 @@ def parse_option():
     config = get_config(args)
 
     return args, config
+    
 
 
 def main(config):

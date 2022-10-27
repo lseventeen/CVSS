@@ -5,7 +5,9 @@ model_2d = {
 "FR_UNet",
 "AttU_Net",
 "CSNet",
-"UNet_Nested"
+"UNet_Nested",
+"MAA_Net",
+"Res_UNet"
 
 }
 

@@ -148,3 +148,40 @@ def recompone_overlap(preds, img_h, img_w, stride_h, stride_w):
     assert (np.min(full_sum) >= 1.0)
     final_avg = full_prob / full_sum
     return final_avg
+
+
+
+def recompone_overlap(preds, img_h, img_w, stride_h, stride_w):
+    assert (len(preds.shape) == 4)  # 4D arrays
+    assert (preds.shape[1] == 1 or preds.shape[1] == 3)  # check the channel is 1 or 3
+    patch_h = preds.shape[2]
+    patch_w = preds.shape[3]
+    N_patches_h = (img_h - patch_h) // stride_h + 1
+    N_patches_w = (img_w - patch_w) // stride_w + 1
+    N_patches_img = N_patches_h * N_patches_w
+    # print("N_patches_h: " + str(N_patches_h))
+    # print("N_patches_w: " + str(N_patches_w))
+    # print("N_patches_img: " + str(N_patches_img))
+    assert (preds.shape[0] % N_patches_img == 0)
+    N_full_imgs = preds.shape[0] // N_patches_img
+    # print("According to the dimension inserted, there are " + str(N_full_imgs) + " full images (of " + str(
+    #     img_h) + "x" + str(img_w) + " each)")
+    full_prob = np.zeros(
+        (N_full_imgs, preds.shape[1], img_h, img_w))  # itialize to zero mega array with sum of Probabilities
+    full_sum = np.zeros((N_full_imgs, preds.shape[1], img_h, img_w))
+
+    k = 0  # iterator over all the patches
+    for i in range(N_full_imgs):
+        for h in range((img_h - patch_h) // stride_h + 1):
+            for w in range((img_w - patch_w) // stride_w + 1):
+                full_prob[i, :, h * stride_h:(h * stride_h) + patch_h, w * stride_w:(w * stride_w) + patch_w] += preds[
+                    k]
+                full_sum[i, :, h * stride_h:(h * stride_h) + patch_h, w * stride_w:(w * stride_w) + patch_w] += 1
+                k += 1
+    assert (k == preds.shape[0])
+    assert (np.min(full_sum) >= 1.0)  # at least one
+    final_avg = full_prob / full_sum
+    # print(final_avg.shape)
+    # assert (np.max(final_avg) <= 1.0)  # max value for a pixel is 1.0
+    # assert (np.min(final_avg) >= 0.0)  # min value for a pixel is 0.0
+    return final_avg 

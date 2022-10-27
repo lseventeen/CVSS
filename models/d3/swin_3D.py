@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from timm.models.layers import DropPath, trunc_normal_
-from einops import rearrange
+# from timm.models.layers import DropPath, trunc_normal_
+# from einops import rearrange
 
 
 class Mlp(nn.Module):
