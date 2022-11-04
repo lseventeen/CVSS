@@ -35,6 +35,7 @@ def parse_option():
                         help="batch size for single GPU")
     parser.add_argument('-dd', '--disable_distributed', help="training without DDP",
                         required=False, default=False, action="store_true")
+    parser.add_argument('-tm', '--train_mode', help="Normal Pretrain Centerline")
     parser.add_argument('-ws', '--world_size', type=int,
                         help="process number for DDP")
     args = parser.parse_args()
@@ -78,7 +79,7 @@ def main_worker(local_rank, config):
         model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], find_unused_parameters=True)
     logger.info(f'\n{model}\n')
-    loss = CE_DiceLoss()
+    loss = pCE_DiceLoss()
     optimizer = build_optimizer(config, model)
     lr_scheduler = build_scheduler(config, optimizer, len(train_loader))
     trainer = Trainer(config=config,

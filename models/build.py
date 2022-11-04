@@ -14,7 +14,7 @@ model_2d = {
 model_3d = {
 "D3_UNet",
 "D3_FR_UNet",
-"PHTrans"
+# "PHTrans"
 
 }
 

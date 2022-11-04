@@ -20,7 +20,7 @@ _C.SEED = 1234
 _C.AMP = False
 _C.EXPERIMENT_ID = ""
 _C.SAVE_DIR = "save_pth"
-_C.MODEL_PATH = "/home/lwt/code/CVSS/save_pth/S16_UNet_220807_212203"
+_C.MODEL_PATH = ""
 
 _C.WANDB = CN()
 _C.WANDB.PROJECT = "CVSS"
@@ -30,23 +30,14 @@ _C.WANDB.MODE = "offline"
 # Data settings
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
-_C.DATASET.CVSS_TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/training/images"
-_C.DATASET.CVSS_TRAIN_LABEL_PATH = "/home/lwt/data/CVSS/training/labels"
+_C.DATASET.TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/training/images"
+_C.DATASET.TRAIN_LABEL_PATH = "/home/lwt/data/CVSS/training/labels"
+_C.DATASET.SCRAWL_LABEL_PATH = "/home/lwt/data/CVSS/training/scrawl_labels"
 
-_C.DATASET.DRIVE_IMAGE_PATH = "/home/lwt/data/CVSS/DRIVE/images"
-_C.DATASET.DRIVE_LABEL_PATH = "/home/lwt/data/CVSS/DRIVE/labels"
+_C.DATASET.PRETRAIN_DATASET_NAME = ["STARE"]
 
-_C.DATASET.CHASEDB1_IMAGE_PATH = "/home/lwt/data/CVSS/CHASEDB1/images"
-_C.DATASET.CHASEDB1_LABEL_PATH = "/home/lwt/data/CVSS/CHASEDB1/labels"
+_C.DATASET.PRETRAIN_DATASET_PATH = "/home/lwt/data/pretrain_for_CVSS"
 
-_C.DATASET.STARE_IMAGE_PATH = "/home/lwt/data/CVSS/STARE/images"
-_C.DATASET.STARE_LABEL_PATH = "/home/lwt/data/CVSS/STARE/labels"
-
-_C.DATASET.CHUAC_IMAGE_PATH = "/home/lwt/data/CVSS/CHUAC/images"
-_C.DATASET.CHUAC_LABEL_PATH = "/home/lwt/data/CVSS/CHUAC/images"
-
-_C.DATASET.DCA1_IMAGE_PATH = "/home/lwt/data/CVSS/DCA1/images"
-_C.DATASET.DCA1_LABEL_PATH = "/home/lwt/data/CVSS/DCA1/images"
 
 _C.DATASET.TEST_IMAGE_PATH = "/home/lwt/data/CVSS/test/images"
 _C.DATASET.TEST_LABEL_PATH = "/home/lwt/data/CVSS/test/labels"
@@ -55,14 +46,14 @@ _C.DATASET.TEST_LABEL_PATH = "/home/lwt/data/CVSS/test/labels"
 # _C.DATASET.TEST_PROPRECESS_PATH = "/home/lwt/data_pro/CVSS/test"
 
 
-# _C.DATASET.STRIDE = 32
+_C.DATASET.STRIDE = 32
 _C.DATASET.PATCH_SIZE = (64,64)
 _C.DATASET.NUM_EACH_EPOCH = 40000
 _C.DATASET.WITH_VAL = True
 _C.DATASET.VAL_SPLIT = 0.2
 
 _C.DATALOADER = CN()
-_C.DATALOADER.BATCH_SIZE = 512
+_C.DATALOADER.BATCH_SIZE = 64
 _C.DATALOADER.PIN_MEMORY = True
 _C.DATALOADER.NUM_WORKERS = 8
 
@@ -73,6 +64,8 @@ _C.MODEL = CN()
 _C.MODEL.TYPE = "FR_UNet"
 
 _C.TRAIN = CN()
+# train model: normal, pretrain, scrawl
+_C.TRAIN.MODE = "normal"
 _C.TRAIN.DO_BACKPROP = False
 _C.TRAIN.VAL_NUM_EPOCHS = 1
 _C.TRAIN.SAVE_PERIOD = 5
@@ -139,7 +132,8 @@ def update_config(config, args):
         config.WANDB.TAG = config.MODEL.TYPE + "_" + args.tag  
     else:
         config.WANDB.TAG = config.MODEL.TYPE
-   
+    if args.train_mode:
+        config.TRAIN.MODE = args.train_mode
 
 
     if args.wandb_mode == "online":

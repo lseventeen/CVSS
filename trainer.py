@@ -83,6 +83,10 @@ class Trainer:
                 self.optimizer.step()
             self.total_loss.update(loss.item())
             self.batch_time.update(time.time() - tic)
+            if self.config.TRAIN.MODE == "scrawl":
+                mask = gt == 255
+                pre *= (~mask).float()
+                gt *= (~mask).float()
 
             self._metrics_update(
                 *get_metrics(pre, gt, 0.5).values())

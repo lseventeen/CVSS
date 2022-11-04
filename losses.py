@@ -2,8 +2,11 @@ from torch import nn, Tensor
 import torch
 import torch.nn.functional as F
 import numpy as np
+import sys
+sys.path.append("../wrapper/bilateralfilter/build/lib.linux-x86_64-3.6")
+from bilateralfilter import bilateralfilter, bilateralfilter_batch
+from torch.autograd import Function, Variable
 def softmax_helper(x): return F.softmax(x, 1)
-
 class BCELoss(nn.Module):
     def __init__(self, reduction="mean", pos_weight=1.0):
         pos_weight = torch.tensor(pos_weight).cuda()
@@ -13,6 +16,48 @@ class BCELoss(nn.Module):
 
     def forward(self, prediction, targets):
         return self.bce_loss(prediction, targets)
+
+
+
+class pCELoss(nn.Module):
+    def __init__(self, reduction='none', pos_weight=1.0):
+        pos_weight = torch.tensor(pos_weight).cuda()
+        super(pCELoss, self).__init__()
+        self.bce_loss = nn.BCEWithLogitsLoss(
+            reduction=reduction, pos_weight=pos_weight)
+
+    def forward(self, prediction, target):
+        mask = target == 255
+        loss = self.bce_loss(prediction, target)
+        if mask.sum() > 0:
+            loss *= (~mask).float()
+            loss = loss.sum()/(~mask).float().sum()
+        else:
+            loss = loss.mean()
+        return loss
+
+class pDiceLoss(nn.Module):
+    def __init__(self, smooth=1e-8):
+        super(pDiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, prediction, target):
+        mask = target == 255
+        prediction = torch.sigmoid(prediction)
+        if mask.sum() > 0:
+            prediction = prediction*(~mask).float()
+            target = target*(~mask).float()
+
+        
+        intersection = 2 * torch.sum(prediction * target) + self.smooth
+        union = torch.sum(prediction) + torch.sum(target) + self.smooth
+        loss = 1 - intersection / union
+        return loss
+
+
+
+
+
 
 
 class DiceLoss(nn.Module):
@@ -38,7 +83,23 @@ class CE_DiceLoss(nn.Module):
     def forward(self, prediction, targets):
         return self.D_weight * self.DiceLoss(prediction, targets) + (1 - self.D_weight) * self.BCELoss(prediction,
                                                                                                        targets)
-                                                                                                       
+
+class pCE_DiceLoss(nn.Module):
+    def __init__(self, D_weight=0.5):
+        super(pCE_DiceLoss, self).__init__()
+        self.DiceLoss = pDiceLoss()
+        self.BCELoss = pCELoss(reduction='none')
+        self.D_weight = D_weight
+
+    def forward(self, prediction, targets):
+        return self.D_weight * self.DiceLoss(prediction, targets) + (1 - self.D_weight) * self.BCELoss(prediction,
+                                                                                                       targets)
+
+
+
+
+
+
 class RobustCrossEntropyLoss(nn.CrossEntropyLoss):
     """
     this is just a compatibility layer because my target tensor is float and has an extra dimension
@@ -216,3 +277,56 @@ def get_tp_fp_fn_tn(net_output, gt, axes=None, mask=None, square=False):
         tn = sum_tensor(tn, axes, keepdim=False)
 
     return tp, fp, fn, tn
+
+class DenseCRFLossFunction(Function):
+    
+    @staticmethod
+    def forward(ctx, images, segmentations, sigma_rgb, sigma_xy, ROIs):
+        ctx.save_for_backward(segmentations)
+        ctx.N, ctx.K, ctx.H, ctx.W = segmentations.shape
+        
+        ROIs = ROIs.unsqueeze_(1).repeat(1,ctx.K,1,1)
+        segmentations = torch.mul(segmentations.cuda(), ROIs.cuda())
+        ctx.ROIs = ROIs
+        
+        densecrf_loss = 0.0
+        images = images.numpy().flatten()
+        segmentations = segmentations.cpu().numpy().flatten()
+        AS = np.zeros(segmentations.shape, dtype=np.float32)
+        bilateralfilter_batch(images, segmentations, AS, ctx.N, ctx.K, ctx.H, ctx.W, sigma_rgb, sigma_xy)
+        densecrf_loss -= np.dot(segmentations, AS)
+    
+        # averaged by the number of images
+        densecrf_loss /= ctx.N
+        
+        ctx.AS = np.reshape(AS, (ctx.N, ctx.K, ctx.H, ctx.W))
+        return Variable(torch.tensor([densecrf_loss]), requires_grad=True)
+        
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_segmentation = -2*grad_output*torch.from_numpy(ctx.AS)/ctx.N
+        grad_segmentation=grad_segmentation.cuda()
+        grad_segmentation = torch.mul(grad_segmentation, ctx.ROIs.cuda())
+        return None, grad_segmentation, None, None, None
+    
+
+class DenseCRFLoss(nn.Module):
+    def __init__(self, weight, sigma_rgb, sigma_xy, scale_factor):
+        super(DenseCRFLoss, self).__init__()
+        self.weight = weight
+        self.sigma_rgb = sigma_rgb
+        self.sigma_xy = sigma_xy
+        self.scale_factor = scale_factor
+    
+    def forward(self, images, segmentations, ROIs):
+        """ scale imag by scale_factor """
+        scaled_images = F.interpolate(images,scale_factor=self.scale_factor) 
+        scaled_segs = F.interpolate(segmentations,scale_factor=self.scale_factor,mode='bilinear',align_corners=False)
+        scaled_ROIs = F.interpolate(ROIs.unsqueeze(1),scale_factor=self.scale_factor).squeeze(1)
+        return self.weight*DenseCRFLossFunction.apply(
+                scaled_images, scaled_segs, self.sigma_rgb, self.sigma_xy*self.scale_factor, scaled_ROIs)
+    
+    def extra_repr(self):
+        return 'sigma_rgb={}, sigma_xy={}, weight={}, scale_factor={}'.format(
+            self.sigma_rgb, self.sigma_xy, self.weight, self.scale_factor
+        )

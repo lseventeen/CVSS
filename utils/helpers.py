@@ -12,6 +12,22 @@ import random
 import os
 from batchgenerators.utilities.file_and_folder_operations import *
 
+def denormalizeimage(images, mean=(0., 0., 0.), std=(1., 1., 1.)):
+    """Denormalize tensor images with mean and standard deviation.
+    Args:
+        images (tensor): N*C*H*W
+        mean (tuple): means for each channel.
+        std (tuple): standard deviations for each channel.
+    """
+    images = images.cpu().numpy()
+    # N*C*H*W to N*H*W*C
+    images = images.transpose((0,2,3,1))
+    images *= std
+    images += mean
+    images *=255.0
+    # N*H*W*C to N*C*H*W
+    images = images.transpose((0,3,1,2))
+    return torch.tensor(images)
    
 def load_checkpoint(checkpoint_path, is_best=False):
     checkpoint_file = "best_checkpoint.pth" if is_best else "final_checkpoint.pth"

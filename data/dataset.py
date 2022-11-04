@@ -2,22 +2,36 @@ import numpy as np
 from batchgenerators.utilities.file_and_folder_operations import *
 import torch
 from torch.utils.data import Dataset
-from data.data_augmentation import Compose, ToTensor, CropToFixed, HorizontalFlip, BlobsToMask, VerticalFlip, RandomRotate90, GaussianBlur3D, RandomContrast, AdditiveGaussianNoise,ElasticDeformation
+from data.data_augmentation import Compose, Standardize, ToTensor, CropToFixed, HorizontalFlip, BlobsToMask, VerticalFlip, RandomRotate90, GaussianBlur3D, RandomContrast, AdditiveGaussianNoise,ElasticDeformation
 from PIL import Image
-from torchvision.transforms import Grayscale, Normalize, ToTensor
 import cv2
 import torch.nn.functional as F
+from skimage.transform import resize  
 
 class CVSS_train_dataset(Dataset):
     def __init__(self, config, series_ids):
         self.images_path = config.DATASET.TRAIN_IMAGE_PATH
         self.labels_path = config.DATASET.TRAIN_LABEL_PATH
+        self.scrawl_labels_path = config.DATASET.SCRAWL_LABEL_PATH
+        self.pretrain_dataset_path = config.DATASET.PRETRAIN_DATASET_PATH
+        self.pretrain_dataset_name = config.DATASET.PRETRAIN_DATASET_NAME
+        self.train_mode = config.TRAIN.MODE
         self.series_ids = series_ids
         self.size = config.DATASET.PATCH_SIZE
         self.num_each_epoch = config.DATASET.NUM_EACH_EPOCH
-        self.images, self.gts = self.preprocess()
+        assert self.train_mode in ["normal", "pretrain", "scrawl"]
+
+        if self.train_mode == "normal":
+            self.images, self.gts = self.CVSS_process(self.labels_path)
+        elif self.train_mode == "scrawl":
+            self.images, self.gts = self.CVSS_process(self.scrawl_labels_path)
+        elif self.train_mode == "pretrain":
+            self.load_pretrain_data(self.pretrain_dataset_path,self.pretrain_dataset_name)
+       
+        
         seed = np.random.randint(123)
         self.seq_DA = Compose([
+            Standardize(),
             CropToFixed(np.random.RandomState(seed),size=self.size),
             HorizontalFlip(np.random.RandomState(seed)),
             VerticalFlip(np.random.RandomState(seed)),
@@ -29,7 +43,18 @@ class CVSS_train_dataset(Dataset):
             ToTensor(False)
         
         ])
-        self.gt_DA = Compose([
+        if self.train_mode == "scrawl":
+            self.gt_DA = Compose([
+            CropToFixed(np.random.RandomState(seed),size=self.size),
+            HorizontalFlip(np.random.RandomState(seed)),
+            VerticalFlip(np.random.RandomState(seed)),
+            RandomRotate90(np.random.RandomState(seed)),
+            ToTensor(False)
+            
+        ])
+        else: 
+            
+            self.gt_DA = Compose([
             CropToFixed(np.random.RandomState(seed),size=self.size),
             HorizontalFlip(np.random.RandomState(seed)),
             VerticalFlip(np.random.RandomState(seed)),
@@ -38,13 +63,23 @@ class CVSS_train_dataset(Dataset):
             BlobsToMask(),
             ToTensor(False)
         ])
-    def data_process(data_path, data_name):
-       
-       
-        img_path = os.path.join(data_path, "images")
-        gt_path = os.path.join(data_path, "labels")
+    def load_pretrain_data(self, data_path, data_name):
+        full_imgs, full_gts = [],[]
+        
+        for i in data_name:
+            imgs,gts = self.pretrain_data_process(data_path, i)
+            full_imgs.extend(imgs)
+            full_gts.extend(gts)
+        return full_imgs,full_gts
+            
+
+
+    def pretrain_data_process(self,data_path, data_name):
+
+        img_path = os.path.join(data_path,data_name, "images")
+        gt_path = os.path.join(data_path,data_name, "labels")
         file_list = list(sorted(os.listdir(img_path)))
-      
+        
         img_list = []
         gt_list = []
 
@@ -52,37 +87,35 @@ class CVSS_train_dataset(Dataset):
             if data_name == "DRIVE":
                 img = Image.open(os.path.join(img_path, file))
                 gt = Image.open(os.path.join(gt_path, file[0:2] + "_manual1.gif"))
-                img = Grayscale(1)(img)
-                img_list.append(img)
-                gt_list.append(gt)
+                img_list.append(np.array(img).transpose(2,0,1))
+                gt_list.append(np.array(gt)[np.newaxis])
 
             elif data_name == "CHASEDB1":
-                
-                img = Image.open(os.path.join(data_path, file))
-                gt = Image.open(os.path.join(data_path, file[0:9] + '_1stHO.png'))
-                img = Grayscale(1)(img)
-                img_list.append(img)
-                gt_list.append(gt)
+                    
+                img = Image.open(os.path.join(img_path, file))
+                gt = Image.open(os.path.join(gt_path, file[0:9] + '_1stHO.png'))
+                    
+                img_list.append(np.array(img).transpose(2,0,1))
+                gt_list.append(np.array(gt)[np.newaxis])
             elif data_name == "STARE":
-            
+                
                 img = Image.open(os.path.join(img_path, file))
                 gt = Image.open(os.path.join(gt_path, file[0:6] + '.ah.ppm'))
-                cv2.imwrite(f"save_picture/{i}img.png", np.array(img))
-                cv2.imwrite(f"save_picture/{i}gt.png", np.array(gt))
-                img = Grayscale(1)(img)
-                img_list.append(ToTensor()(img))
-                gt_list.append(ToTensor()(gt))
+            
+                img_list.append(np.array(img).transpose(2,0,1))
+                gt_list.append(np.array(gt)[np.newaxis])
 
             elif data_name == "DCA1":
-            
+                
                 img = cv2.imread(os.path.join(data_path, file), 0)
                 gt = cv2.imread(os.path.join(data_path, file[:-4] + '_gt.pgm'), 0)
                 gt = np.where(gt >= 100, 255, 0).astype(np.uint8)
-                img_list.append(img)
-                gt_list.append(gt)
-              
+                img_list.append(np.array(img)[np.newaxis])
+        
+                gt_list.append(np.array(gt)[np.newaxis])
+                
             elif data_name == "CHUAC":
-            
+                
                 img = cv2.imread(os.path.join(img_path, file), 0)
                 if int(file[:-4]) <= 17 and int(file[:-4]) >= 11:
                     tail = "PNG"
@@ -93,16 +126,22 @@ class CVSS_train_dataset(Dataset):
                 gt = np.where(gt >= 100, 255, 0).astype(np.uint8)
                 img = cv2.resize(
                     img, (512, 512), interpolation=cv2.INTER_LINEAR)
-                cv2.imwrite(f"save_picture/{i}img.png", img)
-                cv2.imwrite(f"save_picture/{i}gt.png", gt)
-                img_list.append(img)
-                gt_list.append(gt)
-           
-     
+                img_list.append(np.array(img)[np.newaxis])
+                gt_list.append(np.array(gt)[np.newaxis])
+        img_list = self.extend_slice(img_list)
+        return img_list,gt_list
+        
  
- 
+    def extend_slice(self,images,new_slice=8):
+        h,w = images[0].shape[1:]
+        new_shape = [new_slice,h,w]
+        new_images = []
+        for s in images:
+            sequence = resize(s,new_shape,order=3,mode = "edge",anti_aliasing=False)
+            new_images.append(sequence)
+        return new_images
        
-    def preprocess(self,):
+    def CVSS_process(self,label_path):
         images = []
         gts = []
         for i in self.series_ids:
@@ -110,15 +149,11 @@ class CVSS_train_dataset(Dataset):
             for j in range(8):
                 img = cv2.imread(os.path.join(
                     self.images_path, f"image_s{i}_i{j}.png"), 0)
-                image_each_slice.append(255-img)
+                image_each_slice.append(img)
             seq = np.array(image_each_slice)
-            mn = seq.mean()
-            std = seq.std()
-            seq = (seq - mn) / (std + 1e-8)
-
-            gt = cv2.imread(os.path.join(
-                self.labels_path, f"label_s{i}.png"), 0)
-            gt = np.array(gt/255)[np.newaxis]
+            gt = cv2.imread(os.path.join( 
+                label_path, f"label_s{i}.png"), 0)
+            gt = np.array(gt)[np.newaxis]
     
             images.append(seq)
             gts.append(gt)
@@ -176,7 +211,7 @@ class CVSS_test_dataset(CVSS_train_dataset):
             for j in range(8):
                 img = cv2.imread(os.path.join(
                     self.images_path, f"image_s{i}_i{j}.png"), 0)
-                image_each_slice.append(255-img)
+                image_each_slice.append(img)
             seq = np.array(image_each_slice)
             mn = seq.mean()
             std = seq.std()

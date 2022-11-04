@@ -111,13 +111,22 @@ class block(nn.Module):
 
 
 class FR_UNet(nn.Module):
-    def __init__(self,  num_classes=1, num_channels=1, feature_scale=2,  dropout=0.2, fuse=True, out_ave=True):
+    def __init__(self, input_reduce=[4,5,6,7],num_classes=1, num_channels=1, feature_scale=2,  dropout=0.1, fuse=True, out_ave=True):
         super(FR_UNet, self).__init__()
+        self.input_reduce = input_reduce
+        if input_reduce=="mean" or input_reduce=="max":
+            self.num_channels = 1
+        elif isinstance(input_reduce,list):
+            self.num_channels = len(input_reduce)
+        else:
+            self.num_channels=num_channels
+
+
         self.out_ave = out_ave
         filters = [64, 128, 256, 512, 1024]
         filters = [int(x / feature_scale) for x in filters]
         self.block1_3 = block(
-            num_channels, filters[0],  dp=dropout, is_up=False, is_down=True, fuse=fuse)
+            self.num_channels, filters[0],  dp=dropout, is_up=False, is_down=True, fuse=fuse)
         self.block1_2 = block(
             filters[0], filters[0],  dp=dropout, is_up=False, is_down=True, fuse=fuse)
         self.block1_1 = block(
@@ -163,6 +172,19 @@ class FR_UNet(nn.Module):
         self.apply(InitWeights)
 
     def forward(self, x):
+        if self.input_reduce=="mean":
+            x = torch.mean(x, dim = 1, keepdim=True)
+            print(1)
+        
+        elif self.input_reduce=="max":
+            x, _ = torch.max(x, dim = 1, keepdim=True)
+        elif isinstance(self.input_reduce,list):
+            s = torch.split(x,1, dim=1)
+            seq = []
+            for i in self.input_reduce:
+                seq.append(s[i])
+            x=torch.cat(seq,dim=1) 
+
         x1_3, x_down1_3 = self.block1_3(x)
         x1_2, x_down1_2 = self.block1_2(x1_3)
         x2_2, x_up2_2, x_down2_2 = self.block2_2(x_down1_3)
