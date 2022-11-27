@@ -3,7 +3,7 @@ import models
 model_2d = {
 "UNet",
 "FR_UNet",
-"AttU_Net",
+"Att_UNet",
 "CSNet",
 "UNet_Nested",
 "MAA_Net",
@@ -12,21 +12,32 @@ model_2d = {
 }
 
 model_3d = {
-"D3_UNet",
-"D3_FR_UNet",
+"UNet_3D",
+"FR_UNet_3D",
+"CSNet3D",
+"Att_UNet_3D",
+"Res_UNet_3D",
+"UNet_Nested_3D"
 # "PHTrans"
 
 }
 
+model_3dto2d = {
+"IPN",
+"PSC"
+
+}
+
+
 def build_model(config):
     if config.MODEL.TYPE in model_2d:
         return getattr(models, config.MODEL.TYPE)(
-        num_classes = 1,
+        num_classes = 3 if config.TRAIN.MODE == "scrawl" or config.TRAIN.MODE =="largeVessel" or config.TRAIN.MODE =="centerline" else 2,
         num_channels = 8
         ), True
-    elif config.MODEL.TYPE in model_3d:
+    elif config.MODEL.TYPE in model_3d or config.MODEL.TYPE in model_3dto2d:
         return getattr(models, config.MODEL.TYPE)(
-        num_classes = 1,
+        num_classes = 3 if config.TRAIN.MODE == "scrawl" or config.TRAIN.MODE =="largeVessel" or config.TRAIN.MODE =="centerline" else 2,
         num_channels = 1
         ), False
     else:

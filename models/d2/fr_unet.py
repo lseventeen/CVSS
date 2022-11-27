@@ -111,10 +111,10 @@ class block(nn.Module):
 
 
 class FR_UNet(nn.Module):
-    def __init__(self, input_reduce=[4,5,6,7],num_classes=1, num_channels=1, feature_scale=2,  dropout=0.1, fuse=True, out_ave=True):
+    def __init__(self, input_reduce=None,num_classes=3, num_channels=1, feature_scale=2,  dropout=0.1, fuse=True, out_ave=True):
         super(FR_UNet, self).__init__()
         self.input_reduce = input_reduce
-        if input_reduce=="mean" or input_reduce=="max":
+        if input_reduce=="mean" or input_reduce=="min":
             self.num_channels = 1
         elif isinstance(input_reduce,list):
             self.num_channels = len(input_reduce)
@@ -176,8 +176,8 @@ class FR_UNet(nn.Module):
             x = torch.mean(x, dim = 1, keepdim=True)
             print(1)
         
-        elif self.input_reduce=="max":
-            x, _ = torch.max(x, dim = 1, keepdim=True)
+        elif self.input_reduce=="min":
+            x, _ = torch.min(x, dim = 1, keepdim=True)
         elif isinstance(self.input_reduce,list):
             s = torch.split(x,1, dim=1)
             seq = []
@@ -208,5 +208,6 @@ class FR_UNet(nn.Module):
                       self.final3(x11)+self.final4(x12)+self.final5(x13))/5
         else:
             output = self.final5(x13)
+        # output = torch.softmax(output, dim=1)
 
         return output

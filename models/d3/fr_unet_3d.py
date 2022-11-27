@@ -122,9 +122,9 @@ class final_conv(nn.Module):
         return x
 
 
-class D3_FR_UNet(nn.Module):
+class FR_UNet_3D(nn.Module):
     def __init__(self,  num_classes=1, num_channels=1, feature_scale=2,  dropout=0.1, fuse=True, out_ave=True):
-        super(D3_FR_UNet, self).__init__()
+        super(FR_UNet_3D, self).__init__()
         self.out_ave = out_ave
         filters = [64, 128, 256, 512, 1024]
         filters = [int(x / feature_scale) for x in filters]

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from models.utils import InitWeights
+from .DRM import DRM
 class conv(nn.Module):
     def __init__(self, in_c, out_c, dp=0):
         super(conv, self).__init__()
@@ -8,16 +9,16 @@ class conv(nn.Module):
         self.out_c = out_c
         self.conv = nn.Sequential(
 
-            nn.Conv2d(out_c, out_c, kernel_size=3,
+            nn.Conv3d(out_c, out_c, kernel_size=3,
                       padding=1, bias=False),
-            nn.BatchNorm2d(out_c),
-            nn.Dropout2d(dp),
+            nn.BatchNorm3d(out_c),
+            nn.Dropout3d(dp),
             nn.LeakyReLU(0.1, inplace=True),
 
-            nn.Conv2d(out_c, out_c, kernel_size=3,
+            nn.Conv3d(out_c, out_c, kernel_size=3,
                       padding=1, bias=False),
-            nn.BatchNorm2d(out_c),
-            nn.Dropout2d(dp),
+            nn.BatchNorm3d(out_c),
+            nn.Dropout3d(dp),
             nn.LeakyReLU(0.1, inplace=True),
 
         )    
@@ -25,9 +26,9 @@ class conv(nn.Module):
         self.relu = nn.LeakyReLU(0.1, inplace=True)
         if self.in_c != self.out_c:
             self.diminsh_c = nn.Sequential(
-                nn.Conv2d(in_c, out_c, kernel_size=1,
+                nn.Conv3d(in_c, out_c, kernel_size=1,
                           padding=0, stride=1, bias=False),
-                nn.BatchNorm2d(out_c),
+                nn.BatchNorm3d(out_c),
                 nn.LeakyReLU(0.1, inplace=True)
                 
             )
@@ -53,9 +54,9 @@ class up(nn.Module):
     def __init__(self, in_c, out_c):
         super(up, self).__init__()
         self.up = nn.Sequential(
-            nn.ConvTranspose2d(in_c, out_c, kernel_size=2,
+            nn.ConvTranspose3d(in_c, out_c, kernel_size=2,
                                padding=0, stride=2, bias=False),
-            nn.BatchNorm2d(out_c),
+            nn.BatchNorm3d(out_c),
             nn.LeakyReLU(0.1, inplace=False),
             
         )
@@ -69,9 +70,9 @@ class down(nn.Module):
     def __init__(self, in_c, out_c):
         super(down, self).__init__()
         self.down = nn.Sequential(
-            nn.Conv2d(in_c, out_c, kernel_size=2,
+            nn.Conv3d(in_c, out_c, kernel_size=2,
                       padding=0, stride=2, bias=False),
-            nn.BatchNorm2d(out_c),
+            nn.BatchNorm3d(out_c),
             nn.LeakyReLU(0.1, inplace=True)
            
         )
@@ -82,10 +83,10 @@ class down(nn.Module):
 
 
 
-class Res_UNet(nn.Module):
+class Res_UNet_3D(nn.Module):
 
     def __init__(self, num_channels=1, num_classes=1, feature_scale=1, dropout=0):
-        super(Res_UNet, self).__init__()
+        super(Res_UNet_3D, self).__init__()
         self.in_channels = num_channels
         self.feature_scale = feature_scale
     
@@ -112,8 +113,8 @@ class Res_UNet(nn.Module):
         self.deconv1 = conv(filters[0]*2, filters[0], dp = dropout)
 
         # final conv (without any concat)
-        self.final = nn.Conv2d(filters[0], num_classes, 1)
-
+        # self.final = nn.Conv2d(filters[0], num_classes, 1)
+        self.DRM = DRM(filters[0],num_classes)
         self.apply(InitWeights)
 
     def forward(self, inputs):
@@ -139,6 +140,6 @@ class Res_UNet(nn.Module):
         up1 = self.up1(deconv2)  
         deconv3 = self.deconv1(torch.cat([enconv1, up1], dim=1))   
 
-        final = self.final(up1)
-
+        # final = self.final(up1)
+        final = self.DRM(deconv3)
         return final

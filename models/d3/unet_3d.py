@@ -75,9 +75,9 @@ class OutConv(nn.Module):
         x = self.conv2(x.squeeze(1))
         return x
 
-class D3_UNet(nn.Module):
+class UNet_3D(nn.Module):
     def __init__(self, num_channels, num_classes, bilinear=False):
-        super(D3_UNet, self).__init__()
+        super(UNet_3D, self).__init__()
         self.num_channels = num_channels
         self.num_classes = num_classes
         self.bilinear = bilinear

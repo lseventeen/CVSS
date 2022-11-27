@@ -39,17 +39,22 @@ class AverageMeter(object):
     def average(self):
         return np.round(self.avg, 4)
 
+def to_one_hot(seg, all_seg_labels=None):
+    if all_seg_labels is None:
+        all_seg_labels = np.unique(seg)
+    result = np.zeros((len(all_seg_labels), *seg.shape), dtype=seg.dtype)
+    for i, l in enumerate(all_seg_labels):
+        result[i][seg == l] = 1
+    return result
 
-def get_metrics(predict, target, threshold=None, predict_b=None):
-    predict = torch.sigmoid(predict).cpu().detach().numpy().flatten()
-    if predict_b is not None:
-        predict_b = predict_b.flatten()
-    else:
-        predict_b = np.where(predict >= threshold, 1, 0)
-    if torch.is_tensor(target):
-        target = target.cpu().detach().numpy().flatten()
-    else:
-        target = target.flatten()
+
+def get_metrics(predict, target, threshold=0.5):
+
+    predict = predict.flatten()
+    predict_b = np.where(predict >= threshold, 1, 0)
+    target = target.flatten()
+    if max(target) > 1:
+        target = to_one_hot(target, all_seg_labels=[1]).flatten()
     tp = (predict_b * target).sum()
     tn = ((1 - predict_b) * (1 - target)).sum()
     fp = ((1 - target) * predict_b).sum()
@@ -75,12 +80,29 @@ def get_metrics(predict, target, threshold=None, predict_b=None):
     }
 
 
-def count_connect_component(predict, target, threshold=None, connectivity=8):
-    if threshold != None:
-        predict = torch.sigmoid(predict).cpu().detach().numpy()
-        predict = np.where(predict >= threshold, 1, 0)
-    if torch.is_tensor(target):
-        target = target.cpu().detach().numpy()
+def get_color(predict, target):
+
+    tp = (predict * target)
+    tn = ((1 - predict) * (1 - target))
+    fp = ((1 - target) * predict)
+    fn = ((1 - predict) * target)
+    H, W = predict.shape
+    img_colour = np.zeros((H, W,3))
+    for i in range(H):
+        for j in range(W):
+            if tp[i, j] == 1:
+                img_colour[i,j,:]=[255,255,255]
+            elif tn[i, j] == 1:
+                img_colour[i,j,:]=[0,0,0]
+            elif fp[i, j] == 1:
+                img_colour[i,j,:]=[255,255,0]
+            elif fn[i, j] == 1:
+                img_colour[i,j,:]=[114,128,250]
+    return img_colour
+                
+
+def count_connect_component(predict, target, connectivity=8):
+
     pre_n, _, _, _ = cv2.connectedComponentsWithStats(np.asarray(
         predict, dtype=np.uint8)*255, connectivity=connectivity)
     gt_n, _, _, _ = cv2.connectedComponentsWithStats(np.asarray(
