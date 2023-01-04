@@ -31,12 +31,12 @@ def parse_option():
     )
     parser.add_argument("--tag", help='tag of experiment')
     parser.add_argument("-wm", "--wandb_mode", default="offline")
-    parser.add_argument("-mt", "--model_type",default="UNet")
+    parser.add_argument("-mt", "--model_type",default="FR_UNet")
     parser.add_argument('-bs', '--batch-size', type=int,default=64,
                         help="batch size for single GPU")
     parser.add_argument('-ed', '--enable_distributed', help="training without DDP",
                         required=False, action="store_true")
-    parser.add_argument('-tm', '--train_mode', help="Normal Pretrain Centerline")
+    parser.add_argument('-nl', '--num_label', help="number of label data: (1-60)",default = 1)
     parser.add_argument('-ws', '--world_size', type=int,
                         help="process number for DDP")
     args = parser.parse_args()
@@ -94,22 +94,23 @@ def main_worker(local_rank, config):
                       optimizer=optimizer,
                       lr_scheduler=lr_scheduler,
                       tag = tag,
-                      epoch = config.TRAIN.EPOCHS)
+                      )
     checkpoint_dir = trainer.train()    
 
     for i in range(1,config.ITE+1):
-        save_dir = "pseudo_label" + config.EXPERIMENT_ID +"/"+ tag
-        
+        save_dir = "pseudo_label" + "/"+config.EXPERIMENT_ID +"/"+ tag
         test_loader = build_inference_loader(config)
-        model_checkpoint = load_checkpoint(checkpoint_dir,True)
+        model_checkpoint = load_checkpoint(checkpoint_dir, False)
         model.load_state_dict({k.replace('module.', ''): v for k,
-                          v in model_checkpoint['state_dict'].items()})
+                            v in model_checkpoint['state_dict'].items()})
         predict = Inference(config=config,
-                    test_loader=test_loader,
-                    model=model.eval().cuda(),
-                    save_dir = save_dir,
-                    )
+                        test_loader=test_loader,
+                        model=model.eval().cuda(),
+                        save_dir = save_dir,
+                        )
         predict.predict()
+
+        # save_dir = "/home/lwt/data/code/CVSS/semi_supervised_segmentation/pseudo_label/FR_UNet_nl_3_ite_3_221223_170136/ite_1_teacher"
 
         tag = f"ite_{i}_student"
         # loss = CE_DiceLoss()   
@@ -118,33 +119,33 @@ def main_worker(local_rank, config):
         train_label_loader = build_train_all_loader(config,save_dir)
         val_loader = build_val_loader(config)
         trainer = Trainer(config=config,
-                      train_loader=train_label_loader,
-                      val_loader=val_loader,
-                      model=model.cuda(),
-                      loss=loss,
-                      optimizer=optimizer,
-                      lr_scheduler=lr_scheduler,
-                      tag = tag,
-                      epoch = config.TRAIN.EPOCHS)
+                        train_loader=train_label_loader,
+                        val_loader=val_loader,
+                        model=model.cuda(),
+                        loss=loss,
+                        optimizer=optimizer,
+                        lr_scheduler=lr_scheduler,
+                        tag = tag,
+                        )
         checkpoint_dir = trainer.train()
 
 
-        tag = f"ite_{i}_student_fine"
-        loss_fine = CE_DiceLoss() 
-        optimizer_fine = build_optimizer(config, model)
-        lr_scheduler_fine = build_scheduler(config, optimizer, config.DATASET.NUM_EACH_EPOCH)
-        train_label_loader = build_train_single_loader(config)
-        val_loader = build_val_loader(config)
-        trainer = Trainer(config=config,
-                      train_loader=train_label_loader,
-                      val_loader=val_loader,
-                      model=model.cuda(),
-                      loss=loss_fine,
-                      optimizer=optimizer_fine,
-                      lr_scheduler=lr_scheduler_fine,
-                      tag = tag,
-                    epoch = config.TRAIN.FINE_EPOCHS)
-        checkpoint_dir = trainer.train()
+        # tag = f"ite_{i}_student_fine"
+        # loss_s = CE_DiceLoss() 
+        # optimizer_s = build_optimizer(config, model)
+        # lr_scheduler_s = build_scheduler(config, optimizer, config.DATASET.NUM_EACH_EPOCH)
+        # train_label_loader = build_train_single_loader(config)
+        # val_loader = build_val_loader(config)
+        # trainer = Trainer(config=config,
+        #                 train_loader=train_label_loader,
+        #                 val_loader=val_loader,
+        #                 model=model.cuda(),
+        #                 loss=loss,
+        #                 optimizer=optimizer,
+        #                 lr_scheduler=lr_scheduler,
+        #                 tag = tag)
+        # checkpoint_dir = trainer.train()
+        
 
    
         

@@ -101,9 +101,6 @@ class Trainer:
                 self.optimizer.step()
             self.total_loss.update(loss.item())
             self.batch_time.update(time.time() - tic)
-            
-            # if self.config.TRAIN.MODE == "scrawl" or self.config.TRAIN.MODE =="largeVessel" or self.config.TRAIN.MODE =="centerline":
-                # pre = pre[:,0:2,:,:]
             self._metrics_update(
                 *get_metrics(torch.softmax(pre, dim=1).cpu().detach().numpy()[:,1,:,:], gt.cpu().detach().numpy()).values())
             tbar.set_description(

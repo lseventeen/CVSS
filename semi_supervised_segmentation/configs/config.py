@@ -37,11 +37,10 @@ _C.DATASET.VAL_IMAGE_PATH = "/home/lwt/data/CVSS/label/validation/images"
 _C.DATASET.VAL_LABEL_PATH = "/home/lwt/data/CVSS/label/validation/labels"
 _C.DATASET.TEST_IMAGE_PATH = "/home/lwt/data/CVSS/label/test/images"
 _C.DATASET.TEST_LABEL_PATH = "/home/lwt/data/CVSS/label/test/labels"
+_C.DATASET.NUM_LABEL = 1
 _C.DATASET.STRIDE = 32
 _C.DATASET.PATCH_SIZE = (64,64)
 _C.DATASET.NUM_EACH_EPOCH = 40000
-_C.DATASET.WITH_VAL = True
-_C.DATASET.VAL_SPLIT = 0.2
 
 _C.DATALOADER = CN()
 _C.DATALOADER.BATCH_SIZE = 64
@@ -55,8 +54,6 @@ _C.MODEL = CN()
 _C.MODEL.TYPE = "UNet"
 
 _C.TRAIN = CN()
-# train model: normal, pretrain, scrawl
-_C.TRAIN.MODE = "normal"
 _C.TRAIN.DO_BACKPROP = False
 _C.TRAIN.VAL_NUM_EPOCHS = 1
 _C.TRAIN.SAVE_PERIOD = 1
@@ -65,7 +62,6 @@ _C.TRAIN.MNT_METRIC = "AUC"
 _C.TRAIN.EARLY_STOPPING = 100
 
 _C.TRAIN.EPOCHS = 100
-_C.TRAIN.FINE_EPOCHS = 50
 _C.TRAIN.WEIGHT_DECAY = 0.01
 _C.TRAIN.WARMUP_EPOCHS = 10
 _C.TRAIN.BASE_LR = 5e-4
@@ -129,6 +125,8 @@ def update_config(config, args):
         config.WANDB.MODE = args.wandb_mode
     if args.world_size:
         config.WORLD_SIZE = args.world_size
+    if args.num_label:
+        config.DATASET.NUM_LABEL = args.num_label
     if args.enable_distributed:
         config.DIS = True
     config.freeze()

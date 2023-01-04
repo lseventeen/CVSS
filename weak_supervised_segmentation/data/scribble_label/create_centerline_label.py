@@ -44,8 +44,8 @@ def data_preprocess(labels_path, centerline_label_path, is_overwrite=True) :
 
     
 if __name__ == '__main__':
-    labels_path="/home/lwt/data/CVSS/training/labels"
-    scribbles_label_path = "/home/lwt/data/CVSS/training/centerline_vessels"
+    labels_path="/home/lwt/data/CVSS/label/training/labels"
+    scribbles_label_path = "/home/lwt/data/CVSS/scribble/centerline_vessels"
     data_preprocess(labels_path, scribbles_label_path, 
                                  is_overwrite=True
                                )

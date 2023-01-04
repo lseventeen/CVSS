@@ -6,12 +6,11 @@ from loguru import logger
 from tqdm import tqdm
 from utils.helpers import to_cuda
 from utils.metrics import AverageMeter, get_metrics, get_metrics
-import ttach as tta
 import wandb
 import torch.distributed as dist
-import losses
+gl_epoch = 0
 class Trainer:
-    def __init__(self, config, train_loader, val_loader, model, loss, optimizer, lr_scheduler, epoch, tag):
+    def __init__(self, config, train_loader, val_loader, model, loss, optimizer, lr_scheduler, tag):
         self.config = config
         self.scaler = torch.cuda.amp.GradScaler(enabled=True)
         self.loss = loss
@@ -22,7 +21,6 @@ class Trainer:
         self.lr_scheduler = lr_scheduler
         self.num_steps = len(self.train_loader)
         self.tag = tag
-        self.epoch = epoch
         if self._get_rank() == 0:
             self.checkpoint_dir = os.path.join(
                 config.SAVE_DIR, config.EXPERIMENT_ID, tag)
@@ -35,7 +33,9 @@ class Trainer:
 
     def train(self):
 
-        for epoch in range(1, self.epoch+1):
+        for epoch in range(1, self.config.TRAIN.EPOCHS+1):
+            global gl_epoch 
+            gl_epoch = epoch
 
             if self.config.DIS:
                 self.train_loader.sampler.set_epoch(epoch)
@@ -103,8 +103,7 @@ class Trainer:
             self.total_loss.update(loss.item())
             self.batch_time.update(time.time() - tic)
             
-            # if self.config.TRAIN.MODE == "scrawl" or self.config.TRAIN.MODE =="largeVessel" or self.config.TRAIN.MODE =="centerline":
-                # pre = pre[:,0:2,:,:]
+           
             self._metrics_update(
                 *get_metrics(torch.softmax(pre, dim=1).cpu().detach().numpy()[:,1,:,:], gt.cpu().detach().numpy()).values())
             tbar.set_description(

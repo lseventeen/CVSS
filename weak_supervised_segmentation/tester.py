@@ -14,19 +14,18 @@ from batchgenerators.utilities.file_and_folder_operations import *
 import pandas as pd
 
 class Tester(Trainer):
-    def __init__(self,config, test_loader, model, save_dir, is_2d,  model_name):
+    def __init__(self,config, test_loader, model, save_dir, model_name):
         # super(Trainer, self).__init__()
         self.config = config
         self.test_loader = test_loader
         self.model = model
-        self.is_2d = is_2d
         self.model_name = model_name
         self.save_path = "save_results/" + save_dir
         self.labels_path = config.DATASET.TEST_LABEL_PATH
         self.patch_size = config.DATASET.PATCH_SIZE
         self.stride = config.DATASET.STRIDE
         dir_exists(self.save_path)
-        remove_files(self.save_path)
+       
         
         cudnn.benchmark = True
 
@@ -42,9 +41,6 @@ class Tester(Trainer):
             for i, (img, gt) in enumerate(tbar):
                 self.data_time.update(time.time() - tic)
                 img = to_cuda(img)
-        
-                if not self.is_2d:
-                    img = img.unsqueeze(1)
                 with torch.cuda.amp.autocast(enabled=self.config.AMP):
                     pre = self.model(img)
             
@@ -70,7 +66,7 @@ class Tester(Trainer):
         for j in range(num_data):
             
             cv2.imwrite(self.save_path + f"/gt{j}.png", np.uint8(gts[j]*255))
-            cv2.imwrite(self.save_path + f"/pre{j}.png", np.uint8(predict[j]*255))
+            # cv2.imwrite(self.save_path + f"/pre{j}.png", np.uint8(predict[j]*255))    
             cv2.imwrite(self.save_path + f"/pre_b{j}.png", np.uint8(predict_b[j]*255))
             cv2.imwrite(self.save_path + f"/color_b{j}.png", get_color(predict_b[j],gts[j]))
             self._metrics_update(*get_metrics(predict[j], gts[j]).values())
@@ -83,8 +79,7 @@ class Tester(Trainer):
         columns = list(self._metrics_ave().keys())
         columns.append("CCC")
         df = pd.DataFrame(data=np.array(data).reshape(1, len(columns)), index=[self.model_name], columns = columns)
-        df.to_csv(join(self.save_path, f"{self.model_name}_result.cvs"))
-        df.to_excel(join(self.save_path, f"{self.model_name}_result.xlsx"), sheet_name='CVSS')
+        df.to_csv(join(self.save_path, "result.cvs"))
         logger.info(f"###### TEST EVALUATION ######")
         logger.info(f'test time:  {self.batch_time.average}')
         logger.info(f'     CCC:  {self.CCC.average}')

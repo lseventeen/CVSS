@@ -33,12 +33,11 @@ def parse_option():
     )
     parser.add_argument("--tag", help='tag of experiment')
     parser.add_argument("-wm", "--wandb_mode", default="offline")
-    parser.add_argument("-mt", "--model_type",default="normal")
+    parser.add_argument("-mt", "--model_type",default="UNet")
     parser.add_argument('-bs', '--batch-size', type=int,default=64,
                         help="batch size for single GPU")
-    parser.add_argument('-dd', '--disable_distributed', help="training without DDP",
-                        required=False, default=False, action="store_true")
-    parser.add_argument('-tm', '--train_mode', help="Normal Pretrain Centerline")
+    parser.add_argument('-ed', '--enable_distributed', help="training without DDP",
+                        required=False, action="store_true")
     parser.add_argument('-ws', '--world_size', type=int,
                         help="process number for DDP")
     args = parser.parse_args()
@@ -97,10 +96,7 @@ def main_worker(local_rank, config):
         model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], find_unused_parameters=True)
     logger.info(f'\n{model}\n')
-    # loss = CrossEntropyLoss(ignore_index=255)
-    loss = CE_DiceLoss(ignore_index=255)
-    # loss = Dice_Loss(ignore_index=255)
-   
+    loss = CE_DiceLoss()
     optimizer = build_optimizer(config, model)
     lr_scheduler = build_scheduler(config, optimizer, len(train_loader))
     trainer = Trainer(config=config,

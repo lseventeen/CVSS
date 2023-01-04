@@ -23,24 +23,23 @@ _C.SAVE_DIR = "save_pth"
 _C.MODEL_PATH = ""
 
 _C.WANDB = CN()
-_C.WANDB.PROJECT = "CVSS"
+_C.WANDB.PROJECT = "CVSS_FSL"
 _C.WANDB.TAG = ""
 _C.WANDB.MODE = "offline"
 # -----------------------------------------------------------------------------
 # Data settings
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
-_C.DATASET.TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/label/training/images"
-_C.DATASET.TRAIN_LABEL_PATH = "/home/lwt/data/CVSS/label/training/labels"
-_C.DATASET.VAL_IMAGE_PATH = "/home/lwt/data/CVSS/label/validation/images"
-_C.DATASET.VAL_LABEL_PATH = "/home/lwt/data/CVSS/label/validation/labels"
-_C.DATASET.TEST_IMAGE_PATH = "/home/lwt/data/CVSS/label/test/images"
-_C.DATASET.TEST_LABEL_PATH = "/home/lwt/data/CVSS/label/test/labels"
+_C.DATASET.TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/training/images"
+_C.DATASET.TRAIN_LABEL_PATH = "/home/lwt/data/CVSS/training/labels"
+_C.DATASET.VAL_IMAGE_PATH = "/home/lwt/data/CVSS/validation/images"
+_C.DATASET.VAL_LABEL_PATH = "/home/lwt/data/CVSS/validation/labels"
+_C.DATASET.TEST_IMAGE_PATH = "/home/lwt/data/CVSS/test/images"
+_C.DATASET.TEST_LABEL_PATH = "/home/lwt/data/CVSS/test/labels"
 _C.DATASET.STRIDE = 32
 _C.DATASET.PATCH_SIZE = (64,64)
 _C.DATASET.NUM_EACH_EPOCH = 40000
 _C.DATASET.WITH_VAL = True
-_C.DATASET.VAL_SPLIT = 0.2
 
 _C.DATALOADER = CN()
 _C.DATALOADER.BATCH_SIZE = 64
@@ -86,10 +85,6 @@ _C.TRAIN.OPTIMIZER.BETAS = (0.9, 0.999)
 # SGD momentum
 _C.TRAIN.OPTIMIZER.MOMENTUM = 0.9
 
-_C.VAL = CN()
-_C.VAL.IS_POST_PROCESS = True
-_C.VAL.IS_WITH_DATALOADER = True
-_C.VAL.threshold = 0.5
 
 def _update_config_from_file(config, cfg_file):
     config.defrost()

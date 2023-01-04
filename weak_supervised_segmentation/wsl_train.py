@@ -33,10 +33,11 @@ def parse_option():
     )
     parser.add_argument("--tag", help='tag of experiment')
     parser.add_argument("-wm", "--wandb_mode", default="offline")
-    parser.add_argument("-mt", "--model_type",default="UNet")
+    parser.add_argument("-mt", "--model_type",default="FR_UNet")
+    parser.add_argument("-st", "--scribble_type",default="scribble")
     parser.add_argument('-bs', '--batch-size', type=int,default=64,
                         help="batch size for single GPU")
-    parser.add_argument('-dd', '--enable_distributed', help="training without DDP",
+    parser.add_argument('-ed', '--enable_distributed', help="training without DDP",
                         required=False, action="store_true")
     parser.add_argument('-ws', '--world_size', type=int,
                         help="process number for DDP")
@@ -59,7 +60,7 @@ def main(config):
 def main_worker(local_rank, config):
     if local_rank == 0:
         config.defrost()
-        config.EXPERIMENT_ID = f"{config.WANDB.TAG}_{datetime.now().strftime('%y%m%d_%H%M%S')}"
+        config.EXPERIMENT_ID = f"{config.SCRIBBLE_TYPE}_{config.WANDB.TAG}_{datetime.now().strftime('%y%m%d_%H%M%S')}"
         config.freeze()
         wandb.init(project=config.WANDB.PROJECT,
                    name=config.EXPERIMENT_ID, config=config, mode=config.WANDB.MODE)
@@ -75,36 +76,22 @@ def main_worker(local_rank, config):
     cudnn.benchmark = True
 
     train_loader, val_loader = build_train_loader(config)
-    model,is_2d = build_model(config)
-
-    # if is_2d:
-    #     summary(model.cuda(), input_size=(8, 64, 64))
-    #     input = torch.randn((8, 64, 64)).cuda()
-    # else:
-    #     summary(model.cuda(), input_size=(1,8, 64, 64))
-    #     input = torch.randn((1, 8, 64, 64)).cuda()
-
-
-    # input = torch.randn((1, 8, 64, 64)).cuda()
-    # flops = FlopCountAnalysis(model, input)
-    # flops.by_module()
-    # flops.total()
-    # print(flops.total())
-    
+    model = build_model(config)
     # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda()
     if config.DIS:
         model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], find_unused_parameters=True)
     logger.info(f'\n{model}\n')
-    loss = CE_DiceLoss()
+    # loss = CrossEntropyLoss(ignore_index=255)
+    loss = CE_DiceLoss(ignore_index=255)
+ 
+   
     optimizer = build_optimizer(config, model)
-    a = len(train_loader)
     lr_scheduler = build_scheduler(config, optimizer, len(train_loader))
     trainer = Trainer(config=config,
                       train_loader=train_loader,
                       val_loader=val_loader,
                       model=model.cuda(),
-                      is_2d=is_2d,
                       loss=loss,
                       optimizer=optimizer,
                       lr_scheduler=lr_scheduler)

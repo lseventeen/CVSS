@@ -1,8 +1,11 @@
+import sys 
+sys.path.append("..")
+
 import numpy as np
 from batchgenerators.utilities.file_and_folder_operations import *
 import torch
 from torch.utils.data import Dataset
-from data.data_augmentation import Compose, Standardize, ToTensor, CropToFixed, HorizontalFlip, BlobsToMask, VerticalFlip, RandomRotate90, GaussianBlur3D, RandomContrast, AdditiveGaussianNoise,ElasticDeformation
+from data.data_augmentation import Compose, Standardize, ToTensor, CropToFixed, HorizontalFlip, BlobsToMask, VerticalFlip, RandomRotate90, GaussianBlur3D, RandomContrast, AdditiveGaussianNoise,ElasticDeformation,Cutout
 from PIL import Image
 import cv2
 import torch.nn.functional as F
@@ -15,9 +18,10 @@ class label_dataset(Dataset):
         self.size = config.DATASET.PATCH_SIZE
         self.num_each_epoch = config.DATASET.NUM_EACH_EPOCH
         self.images, self.gts  = self.read_image(self.images_path,self.labels_path)
-      
+        self.images = self.images[0:int(config.DATASET.NUM_LABEL)]
+        self.gts = self.gts[0:int(config.DATASET.NUM_LABEL)]
+        self.config = config
         seed = np.random.randint(123)
-       
         self.seq_DA = Compose([
             CropToFixed(np.random.RandomState(seed),size=self.size),
             HorizontalFlip(np.random.RandomState(seed)),
@@ -62,6 +66,7 @@ class label_dataset(Dataset):
     def __getitem__(self, idx):
         # data_id = self.series_ids[idx]
         # torch.manual_seed(idx)
+       
         id =  np.random.randint(len(self.images))
         img = self.images[id]
         gt = self.gts[id]
@@ -74,45 +79,23 @@ class label_dataset(Dataset):
     def __len__(self):
         return self.num_each_epoch
 
-class pseudo_label_dataset(label_dataset):
-    def __init__(self, config,images_path,labels_path):
-        super().__init__(config,images_path,labels_path)
-        seed = np.random.randint(123)
-        
-        self.strong_seq_DA = Compose([
-            CropToFixed(np.random.RandomState(seed),size=self.size),
-            HorizontalFlip(np.random.RandomState(seed)),
-            VerticalFlip(np.random.RandomState(seed)),
-            RandomRotate90(np.random.RandomState(seed)),
-            RandomContrast(np.random.RandomState(seed),execution_probability=0.5),
-            ElasticDeformation(np.random.RandomState(seed),spline_order=3),
-            GaussianBlur3D(execution_probability=0.5),
-            AdditiveGaussianNoise(np.random.RandomState(seed), scale=(0., 0.1), execution_probability=0.1),
-            ToTensor(False)
-            ])
-            
-        self.strong_gt_DA = Compose([
-            CropToFixed(np.random.RandomState(seed),size=self.size),
-            HorizontalFlip(np.random.RandomState(seed)),
-            VerticalFlip(np.random.RandomState(seed)),
-            RandomRotate90(np.random.RandomState(seed)),
-            ElasticDeformation(np.random.RandomState(seed),spline_order=1),
-            BlobsToMask(),
-            ToTensor(False)
-            ])
-
 
 class train_all_dataset(label_dataset):
     def __init__(self, config, images_path,labels_path,unlabel_images_path,pseudo_images_path):
+        
         self.images_path = images_path
         self.labels_path = labels_path
         self.unlabel_images_path = unlabel_images_path
         self.pseudo_images_path = pseudo_images_path    
         self.size = config.DATASET.PATCH_SIZE
         self.num_each_epoch = config.DATASET.NUM_EACH_EPOCH
+        self.epoch = config.TRAIN.EPOCHS
         self.images, self.gts  = self.read_image(self.images_path,self.labels_path)
+        self.images = self.images[0:int(config.DATASET.NUM_LABEL)]
+        self.gts = self.gts[0:int(config.DATASET.NUM_LABEL)]
         self.pl_images, self.pl_gts  = self.read_image(self.unlabel_images_path,self.pseudo_images_path)
         # self.gts = self.read_label(self.labels_path)
+        self.count = 0
         seed = np.random.randint(123)
         self.seq_DA = Compose([
             CropToFixed(np.random.RandomState(seed),size=self.size),
@@ -138,6 +121,7 @@ class train_all_dataset(label_dataset):
             RandomRotate90(np.random.RandomState(seed)),
             RandomContrast(np.random.RandomState(seed),execution_probability=0.5),
             ElasticDeformation(np.random.RandomState(seed),spline_order=3),
+            Cutout(np.random.RandomState(seed)),
             GaussianBlur3D(execution_probability=0.5),
             AdditiveGaussianNoise(np.random.RandomState(seed), scale=(0., 0.1), execution_probability=0.1),
             ToTensor(False)
@@ -158,27 +142,53 @@ class train_all_dataset(label_dataset):
 
  
     def __getitem__(self, idx):
-       
-        # torch.manual_seed(idx)
-        if np.random.random() > 0.5:
-            id =  np.random.randint(len(self.images))
-            img = self.images[id]
-            gt = self.gts[id]
-            img = self.seq_DA(img)
-            gt = self.gt_DA(gt)
+        from trainer import gl_epoch  
+        if gl_epoch / self.epoch > 0.9:
+        # if np.random.random() < max (0.5,gl_epoch / self.epoch):
+        # if np.random.random() < gl_epoch / self.epoch:
+            if np.random.random() > (1-gl_epoch / self.epoch)*5:
+                id =  np.random.randint(len(self.images))
+                img = self.images[id]
+                gt = self.gts[id]
+                img = self.seq_DA(img)
+                gt = self.gt_DA(gt)
+                # img = self.strong_seq_DA(img)
+                # gt = self.strong_gt_DA(gt)
+
+            else:
+                id =  np.random.randint(len(self.pl_images))
+                img = self.pl_images[id]
+                gt = self.pl_gts[id]
+                # img = self.seq_DA(img)
+                # gt = self.gt_DA(gt)
+                img = self.strong_seq_DA(img)
+                gt = self.strong_gt_DA(gt)
 
 
 
         else:
-            id =  np.random.randint(len(self.images))
-            img = self.pl_images[id]
-            gt = self.pl_gts[id]
-            img = self.strong_seq_DA(img)
-            gt = self.strong_gt_DA(gt)
+            if np.random.random() < 0.5:   
+       
+                id =  np.random.randint(len(self.images))
+                img = self.images[id]
+                gt = self.gts[id]
+                img = self.seq_DA(img)
+                gt = self.gt_DA(gt)
+                # img = self.strong_seq_DA(img)
+                # gt = self.strong_gt_DA(gt)
+
+            else:
+                id =  np.random.randint(len(self.pl_images))
+                img = self.pl_images[id]
+                gt = self.pl_gts[id]
+                # img = self.seq_DA(img)
+                # gt = self.gt_DA(gt)
+                img = self.strong_seq_DA(img)
+                gt = self.strong_gt_DA(gt)
 
         
         
-        
+        # self.count += 1
         return img, gt[0].long()
 
     def __len__(self):

@@ -20,7 +20,7 @@ class Tester(Trainer):
         self.test_loader = test_loader
         self.model = model
         self.model_name = model_name
-        self.save_path = "results/" + save_dir
+        self.save_path = "save_results/" + save_dir
         self.labels_path = config.DATASET.TEST_LABEL_PATH
         self.patch_size = config.DATASET.PATCH_SIZE
         self.stride = config.DATASET.STRIDE
@@ -67,8 +67,8 @@ class Tester(Trainer):
             
             cv2.imwrite(self.save_path + f"/gt{j}.png", np.uint8(gts[j]*255))
             # cv2.imwrite(self.save_path + f"/pre{j}.png", np.uint8(predict[j]*255))    
-            # cv2.imwrite(self.save_path + f"/pre_b{j}.png", np.uint8(predict_b[j]*255))
-            # cv2.imwrite(self.save_path + f"/color_b{j}.png", get_color(predict_b[j],gts[j]))
+            cv2.imwrite(self.save_path + f"/pre_b{j}.png", np.uint8(predict_b[j]*255))
+            cv2.imwrite(self.save_path + f"/color_b{j}.png", get_color(predict_b[j],gts[j]))
             self._metrics_update(*get_metrics(predict[j], gts[j]).values())
             self.CCC.update(count_connect_component(predict_b[j], gts[j]))
                 
