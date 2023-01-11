@@ -70,9 +70,9 @@ class up_conv(nn.Module):
         return self.up(x)
 
 
-class Att_UNet(nn.Module):
+class AttU_Net(nn.Module):
     def __init__(self, num_classes=1, num_channels=1, scale_factor=2, dropout=0):
-        super(Att_UNet, self).__init__()
+        super(AttU_Net, self).__init__()
         filters = np.array([64, 128, 256, 512, 1024])
         filters = filters // scale_factor
         self.num_channels = num_channels

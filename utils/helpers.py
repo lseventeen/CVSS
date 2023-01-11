@@ -12,8 +12,6 @@ import random
 import os
 from batchgenerators.utilities.file_and_folder_operations import *
 
-           
-
 def denormalizeimage(images, mean=(0., 0., 0.), std=(1., 1., 1.)):
     """Denormalize tensor images with mean and standard deviation.
     Args:
@@ -53,8 +51,8 @@ def to_cuda(data, non_blocking=True):
     return data
 
 
-def load_checkpoint(checkpoint_path, is_best=True):
-    checkpoint_file = "best_model.pth" if is_best else "final_checkpoint.pth"
+def load_checkpoint(checkpoint_path, is_best=False):
+    checkpoint_file = "best_checkpoint.pth" if is_best else "final_checkpoint.pth"
     checkpoint = torch.load(
         join(checkpoint_path, checkpoint_file), map_location=torch.device('cpu'))
     return checkpoint

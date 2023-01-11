@@ -9,7 +9,7 @@ from loguru import logger
 from tqdm import tqdm
 from trainer import Trainer
 from utils.helpers import dir_exists, remove_files, double_threshold_iteration,to_cuda,recompone_overlap
-from utils.metrics import AverageMeter, get_metrics, get_metrics, count_connect_component,get_color
+from utils.metrics import AverageMeter, get_metrics, get_metrics, count_connect_component
 from batchgenerators.utilities.file_and_folder_operations import *
 import pandas as pd
 
@@ -49,8 +49,7 @@ class Tester(Trainer):
                     pre = self.model(img)
             
                 self.batch_time.update(time.time() - tic)
-                pre = torch.softmax(pre, dim=1)[:,1,:,:]
-        
+            
                 pres.extend(pre)
                 tbar.set_description(
                     'TEST ({}) |  |B {:.2f} D {:.2f} |'.format(i, self.batch_time.average, self.data_time.average))
@@ -63,18 +62,20 @@ class Tester(Trainer):
         pad_w = self.stride - (W - self.patch_size[1]) % self.stride
         new_h = H + pad_h
         new_w = W + pad_w
-        pres = recompone_overlap(np.expand_dims(pres.cpu().detach().numpy(),axis=1), new_h, new_w, self.stride, self.stride)  # predictions
-        predict = pres[:,0,0:H,0:W]
+        pres = recompone_overlap(pres.numpy(), new_h, new_w, self.stride, self.stride)  # predictions
+        pres = TF.crop(torch.from_numpy(pres), 0, 0, H, W).squeeze(1)
+
+        predict = torch.sigmoid(pres).cpu().detach().numpy()
         predict_b = np.where(predict >= 0.5, 1, 0)
 
+
+       
         for j in range(num_data):
-            
             cv2.imwrite(self.save_path + f"/gt{j}.png", np.uint8(gts[j]*255))
             cv2.imwrite(self.save_path + f"/pre{j}.png", np.uint8(predict[j]*255))
             cv2.imwrite(self.save_path + f"/pre_b{j}.png", np.uint8(predict_b[j]*255))
-            cv2.imwrite(self.save_path + f"/color_b{j}.png", get_color(predict_b[j],gts[j]))
-            self._metrics_update(*get_metrics(predict[j], gts[j]).values())
-            self.CCC.update(count_connect_component(predict_b[j], gts[j]))
+            self._metrics_update(*get_metrics(pres[j], gts[j], 0.5).values())
+            self.CCC.update(count_connect_component(pres[j], gts[j], 0.5))
                 
             tic = time.time()    
 

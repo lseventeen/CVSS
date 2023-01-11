@@ -16,9 +16,6 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
-from torch.nn.modules.loss import CrossEntropyLoss
-from torchsummary import summary
-from fvcore.nn import FlopCountAnalysis
 
 
 def parse_option():
@@ -33,8 +30,8 @@ def parse_option():
     )
     parser.add_argument("--tag", help='tag of experiment')
     parser.add_argument("-wm", "--wandb_mode", default="offline")
-    parser.add_argument("-mt", "--model_type",default="normal")
-    parser.add_argument('-bs', '--batch-size', type=int,default=64,
+    parser.add_argument("-mt", "--model_type")
+    parser.add_argument('-bs', '--batch-size', type=int,
                         help="batch size for single GPU")
     parser.add_argument('-dd', '--disable_distributed', help="training without DDP",
                         required=False, default=False, action="store_true")
@@ -77,30 +74,12 @@ def main_worker(local_rank, config):
 
     train_loader, val_loader = build_train_loader(config)
     model,is_2d = build_model(config)
-
-    # if is_2d:
-    #     summary(model.cuda(), input_size=(8, 64, 64))
-    #     input = torch.randn((8, 64, 64)).cuda()
-    # else:
-    #     summary(model.cuda(), input_size=(1,8, 64, 64))
-    #     input = torch.randn((1, 8, 64, 64)).cuda()
-
-
-    # input = torch.randn((1, 8, 64, 64)).cuda()
-    # flops = FlopCountAnalysis(model, input)
-    # flops.by_module()
-    # flops.total()
-    # print(flops.total())
-    
     # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda()
     if config.DIS:
         model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], find_unused_parameters=True)
     logger.info(f'\n{model}\n')
-    # loss = CrossEntropyLoss(ignore_index=255)
-    loss = CE_DiceLoss(ignore_index=255)
-    # loss = Dice_Loss(ignore_index=255)
-   
+    loss = pCE_DiceLoss()
     optimizer = build_optimizer(config, model)
     lr_scheduler = build_scheduler(config, optimizer, len(train_loader))
     trainer = Trainer(config=config,

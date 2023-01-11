@@ -32,7 +32,7 @@ def main(config):
     np.set_printoptions(formatter={'float': '{: 0.4f}'.format}, suppress=True)
     test_loader = build_test_loader(config)
 
-    model_checkpoint = load_checkpoint(config.MODEL_PATH,False)
+    model_checkpoint = load_checkpoint(config.MODEL_PATH)
     config_chk=model_checkpoint["config"]
     model_name = config_chk.MODEL.TYPE
     model,is_2d = build_model(config_chk)

@@ -1,11 +1,17 @@
+import enum
 import os
 import time
-import math
+from datetime import datetime
+import cv2
 import torch
+import numpy as np
+import torch.backends.cudnn as cudnn
+import torch.nn as nn
+import torchvision.transforms.functional as TF
 from loguru import logger
 from tqdm import tqdm
 from utils.helpers import to_cuda
-from utils.metrics import AverageMeter, get_metrics, get_metrics
+from utils.metrics import AverageMeter, get_metrics, get_metrics, count_connect_component
 import ttach as tta
 import wandb
 import torch.distributed as dist
@@ -27,10 +33,6 @@ class Trainer:
                 config.SAVE_DIR, config.EXPERIMENT_ID)
 
             os.makedirs(self.checkpoint_dir)
-          # MONITORING
-        self.improved = True
-        self.not_improved_count = 0
-        self.mnt_best = -math.inf if self.config.TRAIN.MNT_MODE == 'max' else math.inf
 
     def train(self):
 
@@ -46,36 +48,8 @@ class Trainer:
                     logger.info(f'## Info for epoch {epoch} ## ')
                     for k, v in results.items():
                         logger.info(f'{str(k):15s}: {v}')
-           
-
-           
-     
-          
-              
-              
-                    if self.config.TRAIN.MNT_MODE != 'off' and epoch >= 10:
-                        try:
-                            if self.config.TRAIN.MNT_MODE == 'min':
-                                self.improved = (results[self.config.TRAIN.MNT_METRIC] <= self.mnt_best )
-                            else:
-                                self.improved = ( results[self.config.TRAIN.MNT_METRIC] >= self.mnt_best )
-                        except KeyError:
-                            logger.warning(f'The metrics being tracked ({self.config.TRAIN.MNT_METRIC}) has not been calculated. Training stops.')
-                            break
-
-                        if self.improved:
-                            self.mnt_best = results[self.config.TRAIN.MNT_METRIC]
-                            self.not_improved_count = 0
-                        else:
-                            self.not_improved_count += 1
-                        if self.not_improved_count >= self.config.TRAIN.EARLY_STOPPING:
-                            logger.info(f'\nPerformance didn\'t improve for {self.config.TRAIN.EARLY_STOPPING} epochs')
-                            logger.warning('Training Stoped')
-                            break
-   
-            # SAVE CHECKPOINT
-            if self._get_rank() == 0:
-                self._save_checkpoint(epoch, save_best=self.improved)
+            if epoch % self.config.TRAIN.VAL_NUM_EPOCHS == 0 and self._get_rank() == 0:
+                self._save_checkpoint(epoch)
 
     def _train_epoch(self, epoch):
         wrt_mode = "train"
@@ -109,11 +83,13 @@ class Trainer:
                 self.optimizer.step()
             self.total_loss.update(loss.item())
             self.batch_time.update(time.time() - tic)
-            
-            # if self.config.TRAIN.MODE == "scrawl" or self.config.TRAIN.MODE =="largeVessel" or self.config.TRAIN.MODE =="centerline":
-                # pre = pre[:,0:2,:,:]
+            if self.config.TRAIN.MODE == "scrawl":
+                mask = gt == 255
+                pre *= (~mask).float()
+                gt *= (~mask).float()
+
             self._metrics_update(
-                *get_metrics(torch.softmax(pre, dim=1).cpu().detach().numpy()[:,1,:,:], gt.cpu().detach().numpy()).values())
+                *get_metrics(pre, gt, 0.5).values())
             tbar.set_description(
                 'TRAIN ({}) | Loss: {:.4f} | AUC {:.4f} F1 {:.4f} Acc {:.4f}  Sen {:.4f} Spe {:.4f} Pre {:.4f} IOU {:.4f} |B {:.2f} D {:.2f} |'.format(
                     epoch, self.total_loss.average, *self._metrics_ave().values(), self.batch_time.average, self.data_time.average))
@@ -149,7 +125,7 @@ class Trainer:
             
                 self.total_loss.update(loss.item())
                 self._metrics_update(
-                    *get_metrics(torch.softmax(predict, dim=1).cpu().detach().numpy()[:,1,:,:], gt.cpu().detach().numpy()).values())
+                    *get_metrics(predict, gt, threshold=0.5).values())
                 tbar.set_description(
                     'EVAL ({})  | Loss: {:.4f} | AUC {:.4f} F1 {:.4f} Acc {:.4f} Sen {:.4f} Spe {:.4f} Pre {:.4f} IOU {:.4f} |'.format(
                         epoch, self.total_loss.average, *self._metrics_ave().values()))
@@ -167,40 +143,18 @@ class Trainer:
         }
         return log
 
-    # def _save_checkpoint(self, epoch):
-    #     state = {
-    #         'arch': type(self.model).__name__,
-    #         'epoch': epoch,
-    #         'state_dict': self.model.state_dict(),
-    #         'optimizer': self.optimizer.state_dict(),
-    #         'config': self.config
-    #     }
-    #     filename = os.path.join(self.checkpoint_dir,
-    #                             'final_checkpoint.pth')
-    #     logger.info(f'Saving a checkpoint: {filename} ...')
-    #     torch.save(state, filename)
-    #     return filename
-
-
-    
-    def _save_checkpoint(self, epoch, save_best=True):
+    def _save_checkpoint(self, epoch):
         state = {
             'arch': type(self.model).__name__,
             'epoch': epoch,
             'state_dict': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'monitor_best': self.mnt_best,
             'config': self.config
         }
-        filename = os.path.join(self.checkpoint_dir,'final_checkpoint.pth')
-        logger.info(f'Saving a checkpoint: {filename}')
+        filename = os.path.join(self.checkpoint_dir,
+                                'final_checkpoint.pth')
+        logger.info(f'Saving a checkpoint: {filename} ...')
         torch.save(state, filename)
-
-        if save_best:
-            filename = os.path.join(self.checkpoint_dir, 'best_model.pth')
-            logger.info(f"Saving current best: {filename}")
-            torch.save(state, filename)
-            
         return filename
     def _get_rank(self):
         """get gpu id in distribution training."""

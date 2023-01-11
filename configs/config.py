@@ -33,10 +33,8 @@ _C.DATASET = CN()
 _C.DATASET.TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/training/images"
 _C.DATASET.TRAIN_LABEL_PATH = "/home/lwt/data/CVSS/training/labels"
 _C.DATASET.SCRAWL_LABEL_PATH = "/home/lwt/data/CVSS/training/scrawl_labels"
-_C.DATASET.LARGE_VESSEL_LABEL_PATH = "/home/lwt/data/CVSS/training/large_vessels"
-_C.DATASET.CENTERLINE_LABEL_PATH = "/home/lwt/data/CVSS/training/centerline_vessels"
 
-# _C.DATASET.PRETRAIN_DATASET_NAME = ["STARE"]
+_C.DATASET.PRETRAIN_DATASET_NAME = ["STARE"]
 
 _C.DATASET.PRETRAIN_DATASET_PATH = "/home/lwt/data/pretrain_for_CVSS"
 
@@ -71,9 +69,6 @@ _C.TRAIN.MODE = "normal"
 _C.TRAIN.DO_BACKPROP = False
 _C.TRAIN.VAL_NUM_EPOCHS = 1
 _C.TRAIN.SAVE_PERIOD = 5
-_C.TRAIN.MNT_MODE = "max"
-_C.TRAIN.MNT_METRIC = "AUC"
-_C.TRAIN.EARLY_STOPPING = 100
 
 _C.TRAIN.EPOCHS = 100
 _C.TRAIN.WEIGHT_DECAY = 0.01

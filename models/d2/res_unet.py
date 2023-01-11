@@ -84,7 +84,7 @@ class down(nn.Module):
 
 class Res_UNet(nn.Module):
 
-    def __init__(self, num_channels=1, num_classes=1, feature_scale=1, dropout=0):
+    def __init__(self, num_channels=1, num_classes=1, feature_scale=2, dropout=0):
         super(Res_UNet, self).__init__()
         self.in_channels = num_channels
         self.feature_scale = feature_scale

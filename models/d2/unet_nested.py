@@ -91,6 +91,7 @@ class UNet_Nested(nn.Module):
         self.up_concat13 = unetUp(filters[2], filters[1], self.is_deconv, 4)
         
         self.up_concat04 = unetUp(filters[1], filters[0], self.is_deconv, 5)
+        
         # final conv (without any concat)
         self.final_1 = nn.Conv2d(filters[0], num_classes, 1)
         self.final_2 = nn.Conv2d(filters[0], num_classes, 1)
