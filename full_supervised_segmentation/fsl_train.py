@@ -4,6 +4,7 @@ from data import build_train_loader
 from trainer import Trainer
 from utils.helpers import seed_torch
 from losses import *
+from cldice import soft_dice_cldice,SoftDiceLoss
 from datetime import datetime
 import wandb
 from configs.config import get_config
@@ -96,7 +97,9 @@ def main_worker(local_rank, config):
         model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], find_unused_parameters=True)
     logger.info(f'\n{model}\n')
-    loss = CE_DiceLoss()
+    # loss = CE_DiceLoss()
+    # loss = SoftDiceLoss()
+    loss = DC_and_CE_loss({},{})
     optimizer = build_optimizer(config, model)
     lr_scheduler = build_scheduler(config, optimizer, len(train_loader))
     trainer = Trainer(config=config,

@@ -38,14 +38,14 @@ class Tester(Trainer):
         pres = []
         with torch.no_grad():
             
-            for i, (img, gt) in enumerate(tbar):
+            for i, (img, _) in enumerate(tbar):
                 self.data_time.update(time.time() - tic)
                 img = to_cuda(img)
                 with torch.cuda.amp.autocast(enabled=self.config.AMP):
                     pre = self.model(img)
             
                 self.batch_time.update(time.time() - tic)
-                pre = torch.softmax(pre, dim=1)[:,1,:,:]
+                pre = torch.softmax(pre[:,:self.config.DATASET.NUM_CLASSES], dim=1)[:,1,:,:]
         
                 pres.extend(pre)
                 tbar.set_description(
@@ -60,9 +60,9 @@ class Tester(Trainer):
         new_h = H + pad_h
         new_w = W + pad_w
         pres = recompone_overlap(np.expand_dims(pres.cpu().detach().numpy(),axis=1), new_h, new_w, self.stride, self.stride)  # predictions
+
         predict = pres[:,0,0:H,0:W]
         predict_b = np.where(predict >= 0.5, 1, 0)
-
         for j in range(num_data):
             
             cv2.imwrite(self.save_path + f"/gt{j}.png", np.uint8(gts[j]*255))

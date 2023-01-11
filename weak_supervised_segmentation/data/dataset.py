@@ -19,10 +19,14 @@ class CVSS_train_dataset(Dataset):
         seed = np.random.randint(123)
        
         self.seq_DA = Compose([
+           
             CropToFixed(np.random.RandomState(seed),size=self.size),
             HorizontalFlip(np.random.RandomState(seed)),
             VerticalFlip(np.random.RandomState(seed)),
-            RandomRotate90(np.random.RandomState(seed)), 
+            RandomRotate90(np.random.RandomState(seed)),
+            # RandomContrast(np.random.RandomState(seed),execution_probability=0.5),
+            # GaussianBlur3D(execution_probability=0.5),
+            # AdditiveGaussianNoise(np.random.RandomState(seed), scale=(0., 0.1), execution_probability=0.1),
             ToTensor(False)
             ])
        
@@ -77,6 +81,7 @@ class CVSS_train_dataset(Dataset):
 
     def __len__(self):
         return self.num_each_epoch
+        # return len(self.images)
 
 
 class CVSS_test_dataset(Dataset):

@@ -250,15 +250,8 @@ def data_preprocess(labels_path, scribbles_label_path, is_overwrite=True) :
         label = cv2.imread(os.path.join(labels_path, i), 0)//255
         num_classes = 2
         output = generate_scribble(label, tuple([1, num_classes-1]),cut_branch=False)
-        output[output == 0] = 2  # ignore index
+        output[output == 0] = 255  # ignore index
         output[output == num_classes] = 0
-        
-
-
-
-
-
-
         cv2.imwrite(os.path.join(scribbles_label_path, i), output)
         print(f"{i} DONE")
         
