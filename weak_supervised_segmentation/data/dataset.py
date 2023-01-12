@@ -77,7 +77,7 @@ class CVSS_train_dataset(Dataset):
         
         img = self.seq_DA(img)
         gt = self.gt_DA(gt)
-        return img, gt[0].long()
+        return img, gt.long()
 
     def __len__(self):
         return self.num_each_epoch
@@ -141,7 +141,7 @@ class CVSS_test_dataset(Dataset):
         
         img = self.img_patch[idx]
         gt = self.gt_patch[idx]
-        return img,gt[0].long()
+        return img,gt.long()
 
     def __len__(self):
         return len(self.img_patch)

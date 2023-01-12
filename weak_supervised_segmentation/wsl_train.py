@@ -82,8 +82,8 @@ def main_worker(local_rank, config):
         model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], find_unused_parameters=True)
     logger.info(f'\n{model}\n')
-    loss = CrossEntropyLoss(ignore_index=255)
-    # loss = DC_and_CE_loss({},{},ignore_label=255)
+    # loss = CrossEntropyLoss(ignore_index=255)
+    loss = DC_and_CE_loss({},{},ignore_label=255)
     # loss = CE_DiceLoss(ignore_index=255)
  
    

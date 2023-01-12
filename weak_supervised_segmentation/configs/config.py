@@ -35,6 +35,9 @@ _C.DATASET.TRAIN_IMAGE_PATH = "/home/lwt/data/CVSS/training/images"
 _C.DATASET.SCRIBBLE_LABEL_PATH = "/home/lwt/data/CVSS/training/scribble_type/scribble"
 _C.DATASET.CENTERLINE_LABEL_PATH = "/home/lwt/data/CVSS/training/scribble_type/centerline"
 
+# _C.DATASET.SCRIBBLE_LABEL_PATH = "/home/lwt/data/CVSS/training/luo_labels"
+# _C.DATASET.CENTERLINE_LABEL_PATH = "/home/lwt/data/CVSS/training/scribble_type/scrawl_labels"
+
 _C.DATASET.VAL_IMAGE_PATH = "/home/lwt/data/CVSS/validation/images"
 _C.DATASET.VAL_LABEL_PATH = "/home/lwt/data/CVSS/validation/labels"
 _C.DATASET.TEST_IMAGE_PATH = "/home/lwt/data/CVSS/test/images"

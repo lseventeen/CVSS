@@ -5,10 +5,13 @@ from batchgenerators.utilities.file_and_folder_operations import *
 import shutil
 def scribble_show( scribble_path, luo_bak_path, centerline_path,process_data_path, num_sequence = 30, ignore_index = 255,is_overwrite = True) :
 
-    if is_overwrite and isdir(process_data_path):
-        shutil.rmtree(process_data_path)
+    
     cen_path = join(process_data_path,"centerline")
     scr_path = join(process_data_path,"scribble")
+    if is_overwrite and isdir(cen_path):
+        shutil.rmtree(cen_path)
+    if is_overwrite and isdir(scr_path):
+        shutil.rmtree(scr_path)
     os.makedirs(cen_path, exist_ok=True)  
     os.makedirs(scr_path, exist_ok=True)  
     for id in range(num_sequence):
